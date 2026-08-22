@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smart_landlord
+      POSTGRES_USER: landlord
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U landlord -d smart_landlord"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://landlord@db:5432/smart_landlord
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      UPLOAD_DIR: /data/uploads
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Create .env and set ADMIN_PASSWORD}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      TZ: Europe/London
+    secrets:
+      - db_password
+      - jwt_secret
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - app-uploads:/data/uploads
+
+volumes:
+  postgres-data:
+  app-uploads:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
