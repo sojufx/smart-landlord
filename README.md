@@ -8,22 +8,6 @@ It runs as two Docker services: a PostgreSQL database and a Node.js application 
 
 This software helps you keep records. It is not legal, tax or accounting advice.
 
-## Screenshots
-
-| Screen | Screenshot |
-|---|---|
-| Sign in | ![Sign in](docs/screenshots/01-login.png) |
-| Dashboard | ![Dashboard](docs/screenshots/02-dashboard.png) |
-| Properties | ![Properties](docs/screenshots/03-properties.png) |
-| Tasks | ![Tasks](docs/screenshots/04-tasks.png) |
-| Compliance score | ![Compliance](docs/screenshots/05-compliance.png) |
-| Compliance records | ![Compliance records](docs/screenshots/06-compliance-records.png) |
-| Repair evidence upload | ![Repairs](docs/screenshots/07-repairs-evidence-upload.png) |
-| Multi-type invoice lines | ![Invoices](docs/screenshots/08-invoice-lines.png) |
-| Document vault | ![Documents](docs/screenshots/09-documents-vault.png) |
-| Accounting | ![Accounting](docs/screenshots/10-accounting.png) |
-| Mobile dashboard | ![Mobile dashboard](docs/screenshots/11-mobile-dashboard.png) |
-
 ## Features
 
 - Landlord records with Rent Smart Wales registration, licence and CPD fields
