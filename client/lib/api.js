@@ -32,3 +32,10 @@ export function daysUntil(value) {
   const today=new Date(); today.setHours(0,0,0,0)
   return Math.ceil((new Date(value)-today)/86400000)
 }
+
+export function dateInputValue(value) {
+  if (!value) return ''
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return String(value).slice(0,10)
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleDateString('en-CA')
+}

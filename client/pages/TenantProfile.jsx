@@ -1,6 +1,6 @@
 import { useCallback,useEffect,useState } from 'react'
 import { Link,useParams } from 'react-router-dom'
-import { api,moneyExact,dateLabel } from '../lib/api.js'
+import { api,moneyExact,dateLabel,dateInputValue } from '../lib/api.js'
 import { ICONS } from '../lib/icons.js'
 
 const { ArrowLeft,Pencil,Upload,ExternalLink,Trash2 } = ICONS
@@ -177,7 +177,10 @@ function Metric({label,value,tone}){
   return <article className="metric"><div className="metric-label">{label}</div><div className="metric-value" style={tone?{color:tone==='red'?'#b91c1c':'#17694a'}:undefined}>{value}</div></article>
 }
 function normalize(tenant){
-  return Object.fromEntries(Object.entries(tenant).filter(([,value])=>typeof value!=='object'))
+  return Object.fromEntries(Object.entries(tenant).map(([name,value])=>[
+    name,
+    name==='date_of_birth'?dateInputValue(value):value
+  ]).filter(([,value])=>typeof value!=='object'))
 }
 function fullName(tenant){return [tenant.first_name,tenant.surname].filter(Boolean).join(' ')}
 function formatAddress(property){

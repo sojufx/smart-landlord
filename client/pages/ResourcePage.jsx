@@ -1,6 +1,6 @@
 import { useCallback,useEffect, useMemo, useState } from 'react'
 import { Link,useParams,useSearchParams } from 'react-router-dom'
-import { api,money,moneyExact,dateLabel } from '../lib/api.js'
+import { api,money,moneyExact,dateLabel,dateInputValue } from '../lib/api.js'
 import { RESOURCE_FIELDS,TABLE_COLUMNS } from '../lib/model.js'
 import { ICONS,NAV } from '../lib/icons.js'
 import { Modal } from '../components/ui.jsx'
@@ -334,6 +334,7 @@ function normalizeForm(row,fields){
     let value=row[field.name]
     if(field.type==='file')return [field.name,null]
     if(field.type==='files')return [field.name,[]]
+    if(field.type==='date')return [field.name,dateInputValue(value)]
     if(field.type==='datetime-local'&&value)value=new Date(value).toISOString().slice(0,16)
     if(field.type==='invoice_lines')return [field.name,Array.isArray(value)?value:[]]
     if(field.type==='json')value=value==null?'':JSON.stringify(value,null,2)
