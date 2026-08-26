@@ -1,5 +1,5 @@
 import { useCallback,useEffect, useMemo, useState } from 'react'
-import { useParams,useSearchParams } from 'react-router-dom'
+import { Link,useParams,useSearchParams } from 'react-router-dom'
 import { api,money,moneyExact,dateLabel } from '../lib/api.js'
 import { RESOURCE_FIELDS,TABLE_COLUMNS } from '../lib/model.js'
 import { ICONS,NAV } from '../lib/icons.js'

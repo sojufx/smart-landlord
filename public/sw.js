@@ -1,4 +1,4 @@
-const CACHE = 'smart-landlord-v12'
+const CACHE = 'smart-landlord-v13'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', event => {
