@@ -25,3 +25,5 @@
 
 - Missing compliance inspection/expiry dates are rejected for active records and displayed clearly as "Not set".
 - Invoice totals handle multiple charge types and mixed VAT rates correctly.
+- Document metadata is editable and existing files can be replaced.
+- Orphaned reminders are removed automatically when their source record is deleted.

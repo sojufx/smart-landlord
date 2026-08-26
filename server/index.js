@@ -89,6 +89,24 @@ app.post('/api/documents/upload',upload.single('file'),async(req,res)=>{
     res.status(201).json({...result.rows[0],url:`/api/documents/${result.rows[0].id}/file`})
   }catch(error){console.error(error);res.status(500).json({error:error.message})}
 })
+app.post('/api/documents/:id/replace',upload.single('file'),async(req,res)=>{
+  try{
+    if(!req.file)return res.status(400).json({error:'No file uploaded'})
+    const existing=await req.pool.query('SELECT * FROM documents WHERE id=$1',[req.params.id])
+    if(!existing.rows[0])return res.status(404).json({error:'Document not found'})
+    const updated=await req.pool.query(
+      `UPDATE documents
+       SET file_name=$1,original_name=$2,mime_type=$3,file_size=$4,updated_at=now()
+       WHERE id=$5 RETURNING *`,
+      [req.file.filename,req.file.originalname,req.file.mimetype,req.file.size,req.params.id]
+    )
+    await audit(req,req.user.sub,req.user.name,'replace','documents',updated.rows[0].id,{
+      original_name:updated.rows[0].original_name,
+      previous_original_name:existing.rows[0].original_name
+    })
+    res.json({...updated.rows[0],url:`/api/documents/${updated.rows[0].id}/file`})
+  }catch(error){console.error(error);res.status(500).json({error:error.message})}
+})
 app.get('/api/documents/:id/file',async(req,res)=>{
   const row=await req.pool.query('SELECT file_name,original_name,mime_type FROM documents WHERE id=$1',[req.params.id])
   if(!row.rows[0]) return res.status(404).json({error:'Not found'})

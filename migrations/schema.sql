@@ -560,3 +560,12 @@ ALTER TABLE landlords ADD COLUMN IF NOT EXISTS rsw_licence_certificate_url TEXT;
 ALTER TABLE compliance_records DROP CONSTRAINT IF EXISTS compliance_records_category_check;
 ALTER TABLE compliance_records ADD CONSTRAINT compliance_records_category_check
   CHECK (category IN ('gas','eicr','epc','insurance','rsw_registration','rsw_licence','hmo_licence','legionella','smoke_co_alarm','fire_detection_alarm_system','fire_risk','other'));
+
+DELETE FROM reminders r
+WHERE NOT (
+  (r.source_table = 'compliance_records' AND EXISTS (SELECT 1 FROM compliance_records c WHERE c.id = r.source_id)) OR
+  (r.source_table = 'safety_devices' AND EXISTS (SELECT 1 FROM safety_devices s WHERE s.id = r.source_id)) OR
+  (r.source_table = 'properties' AND EXISTS (SELECT 1 FROM properties p WHERE p.id = r.source_id)) OR
+  (r.source_table = 'landlords' AND EXISTS (SELECT 1 FROM landlords l WHERE l.id = r.source_id)) OR
+  (r.source_table = 'tasks' AND EXISTS (SELECT 1 FROM tasks t WHERE t.id = r.source_id))
+);

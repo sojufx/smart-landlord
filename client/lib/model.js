@@ -297,6 +297,16 @@ export const RESOURCE_FIELDS={
     {name:'bank_details',label:'Bank details',type:'textarea'},{name:'terms',label:'Terms'},
     {name:'notes',label:'Notes',type:'textarea'}
   ],
+  documents:[
+    {name:'title',label:'Title',required:true},
+    {name:'folder',label:'Folder'},
+    {name:'document_type',label:'Document type'},
+    {name:'issue_date',label:'Issue date',type:'date'},
+    {name:'expiry_date',label:'Expiry date',type:'date'},
+    {name:'version',label:'Version'},
+    {name:'notes',label:'Notes',type:'textarea'},
+    {name:'replacement_file',label:'Replace file — any format',type:'file'}
+  ],
   expenses:[
     {name:'expense_date',label:'Expense date',type:'date',required:true},
     {name:'supplier',label:'Supplier'},{name:'category',label:'Category'},

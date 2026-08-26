@@ -108,6 +108,8 @@ export default function ResourcePage({resource:resourceProp}){
       delete body.evidence_file
       const evidenceFiles=Array.isArray(body.evidence_files)?body.evidence_files:[]
       delete body.evidence_files
+      const replacementFile=resource==='documents'?body.replacement_file:null
+      delete body.replacement_file
       let recordId=editing
       if(editing==='new'){
         const created=await api(`/${resource}`,{method:'POST',body})
@@ -115,6 +117,11 @@ export default function ResourcePage({resource:resourceProp}){
         setEditing(recordId)
       } else if(Object.keys(body).length){
         await api(`/${resource}/${editing}`,{method:'PATCH',body})
+      }
+      if(replacementFile instanceof File){
+        const replacement=new FormData()
+        replacement.append('file',replacementFile)
+        await api(`/documents/${editing}/replace`,{method:'POST',body:replacement})
       }
       if(evidenceFile instanceof File && resource==='compliance'){
         const evidence=new FormData()
