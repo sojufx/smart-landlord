@@ -62,7 +62,7 @@ export default function App(){
             <Route path="/" element={<Dashboard user={user}/>}/>
             <Route path="/compliance" element={<Compliance/>}/>
             <Route path="/compliance/records" element={<ResourcePage resource="compliance"/>}/>
-            <Route path="/rent-smart-wales" element={<RentSmartWales/>}/>
+            <Route path="/rent-smart-wales" element={<RentSmartWales user={user}/>}/>
             <Route path="/accounting" element={<Reports mode="accounting"/>}/>
             <Route path="/reports" element={<Reports/>}/>
             <Route path="/settings" element={<Settings user={user}/>}/>
