@@ -79,6 +79,7 @@ export function registerResourceRoutes(app) {
     if (!definition || definition.readonly) return res.status(404).json({ error: 'Resource not found' })
     try {
       const body = prepareBody(req.params.resource, req.body)
+      validateResource(req.params.resource, body)
       const writable = writableColumns(definition.table)
       const keys = Object.keys(body).filter(key => writable.some(column => column.column_name === key))
       if (!keys.length) return res.status(400).json({ error: 'No valid fields supplied' })
@@ -105,6 +106,7 @@ export function registerResourceRoutes(app) {
       const before = beforeResult.rows[0]
       if (!before) return res.status(404).json({ error: `${definition.label} not found` })
       const body = prepareBody(req.params.resource, req.body)
+      validateResource(req.params.resource, body, before)
       const writable = writableColumns(definition.table)
       const keys = Object.keys(body).filter(key => writable.some(column => column.column_name === key))
       if (!keys.length) return res.status(400).json({ error: 'No valid fields supplied' })
@@ -159,6 +161,16 @@ function writableColumns(table) {
   return columnsFor(table).filter(column => !['id','created_at','updated_at'].includes(column.column_name) && column.is_generated !== 'ALWAYS')
 }
 function normalizeValue(value) { return value === '' ? null : value }
+
+function validateResource(resource, body, before) {
+  if (resource !== 'compliance') return
+  const status = body.status ?? before?.status
+  if (status === 'not_applicable') return
+  const inspectionDate = body.inspection_date ?? before?.inspection_date
+  const expiryDate = body.expiry_date ?? before?.expiry_date
+  if (!inspectionDate) throw new Error('Inspection / issue date is required unless the record is Not Applicable')
+  if (!expiryDate) throw new Error('Expiry / retest date is required unless the record is Not Applicable')
+}
 
 function prepareBody(resource, body) {
   const columns = columnsFor(RESOURCES[resource].table)

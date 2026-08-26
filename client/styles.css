@@ -32,6 +32,15 @@ a{color:var(--blue);text-decoration:none}
 .badge-count{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;border-radius:99px;background:var(--green);color:white;font-size:10px;font-weight:700;display:grid;place-items:center}
 .page-title{margin:0;font-size:19px;font-weight:750;letter-spacing:-.02em}
 .topbar-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
+.global-search{position:relative;margin-left:12px;min-width:min(320px,32vw)}
+.global-results{position:absolute;top:calc(100% + 7px);left:0;right:0;z-index:60;max-height:min(58vh,520px);overflow:auto;background:white;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+.global-result{display:block;width:100%;padding:10px 12px;border:0;border-bottom:1px solid #edf0f1;background:white;text-align:left}
+.global-result:last-child{border-bottom:0}
+.global-result strong,.global-result small{display:block}
+.global-result strong{font-size:13px}
+.global-result small,.global-result.muted{color:var(--muted);font-size:12px}
+.global-result:hover{background:#f6f8f8}
+.global-result-label{display:block;color:var(--green);font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em}
 .user-chip{display:flex;align-items:center;gap:9px;padding:5px 9px 5px 5px;border:1px solid var(--line);border-radius:99px;background:white}
 .avatar{width:29px;height:29px;border-radius:50%;background:#17694a;color:white;display:grid;place-items:center;font-size:12px;font-weight:800}
 .user-name{font-weight:650}
@@ -116,6 +125,8 @@ table.data-table{width:100%;border-collapse:collapse;font-size:13px}
 .hero-grid{position:absolute;inset:0;opacity:.18;background-image:linear-gradient(#ffffff22 1px,transparent 1px),linear-gradient(90deg,#ffffff22 1px,transparent 1px);background-size:42px 42px}
 .error-text{color:var(--red);font-size:13px;margin:0 0 12px}
 .upload-box{border:1px dashed var(--line-strong);border-radius:6px;padding:16px;background:#fbfcfc}
+.property-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;padding:16px}
+.property-gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
 .invoice-lines{display:grid;gap:11px;padding:12px;border:1px solid var(--line);border-radius:6px;background:#fbfcfc}
 .invoice-line{padding:11px;border:1px solid var(--line);border-radius:6px;background:white}
 .invoice-line-head{display:flex;justify-content:space-between;align-items:end;gap:9px;margin-bottom:9px}
@@ -136,6 +147,7 @@ table.data-table{width:100%;border-collapse:collapse;font-size:13px}
   .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .two-col,.three-col{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
+  .global-search{min-width:180px}
   .invoice-line-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .login-shell{grid-template-columns:1fr}
   .login-hero{min-height:230px}
@@ -147,6 +159,7 @@ table.data-table{width:100%;border-collapse:collapse;font-size:13px}
   .main{margin-left:0}
   .menu-button{display:inline-flex}
   .user-meta{display:none}
+  .global-search{display:none}
   .content{padding-bottom:80px}
   .page-header{align-items:flex-start;flex-direction:column}
   .dashboard-grid{grid-template-columns:1fr}

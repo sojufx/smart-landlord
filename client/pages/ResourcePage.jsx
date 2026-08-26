@@ -1,17 +1,19 @@
 import { useCallback,useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams,useSearchParams } from 'react-router-dom'
 import { api,money,moneyExact,dateLabel } from '../lib/api.js'
 import { RESOURCE_FIELDS,TABLE_COLUMNS } from '../lib/model.js'
 import { ICONS,NAV } from '../lib/icons.js'
 import { Modal } from '../components/ui.jsx'
 
-const { Plus,Pencil,Trash2,Download,Printer,Upload,ExternalLink,Check } = ICONS
+const { Plus,Pencil,Trash2,Download,Printer,Upload,ExternalLink,Check,Eye } = ICONS
 const NO_FIELDS = []
 const INVOICE_LINE_TYPES=['management_fee','tenant_charge','contractor','maintenance','repair_recharge','rent_statement','arrears_statement','deposit_statement','other']
 const EVIDENCE_RESOURCES={
+  properties:{entityType:'properties',folder:'PROPERTY PHOTOS',dateField:'purchase_date',documentType:'property_photo'},
   repairs:{entityType:'repairs',folder:'REPAIRS'},
   inspections:{entityType:'inspections',folder:'INSPECTIONS'},
-  inventories:{entityType:'inventories',folder:'INVENTORIES'}
+  inventories:{entityType:'inventories',folder:'INVENTORIES'},
+  expenses:{entityType:'expenses',folder:'EXPENSE RECEIPTS',dateField:'expense_date',documentType:'receipt'}
 }
 
 export default function ResourcePage({resource:resourceProp}){
@@ -23,7 +25,6 @@ export default function ResourcePage({resource:resourceProp}){
   const fields=RESOURCE_FIELDS[resource]||NO_FIELDS
   const columns=TABLE_COLUMNS[resource]||['id']
   const [rows,setRows]=useState([])
-  const [query,setQuery]=useState('')
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
@@ -32,7 +33,22 @@ export default function ResourcePage({resource:resourceProp}){
   const [options,setOptions]=useState({})
   const [saving,setSaving]=useState(false)
   const [rowBusyId,setRowBusyId]=useState('')
+  const [searchParams,setSearchParams]=useSearchParams()
   const readOnly=resource==='reminders'||resource==='audit_logs'
+  const query=searchParams.get('q')||''
+  const groupedCompliance=useMemo(()=>{
+    if(resource!=='compliance')return []
+    const groups=new Map()
+    for(const row of rows){
+      const key=row.property_id||'unlinked'
+      if(!groups.has(key))groups.set(key,{id:key,records:[]})
+      groups.get(key).records.push(row)
+    }
+    return [...groups.entries()].map(([propertyId,group])=>{
+      const property=(options.properties||[]).find(item=>item.id===propertyId)
+      return {...group,label:property?formatAddress(property):'Unlinked records'}
+    }).sort((left,right)=>left.label.localeCompare(right.label))
+  },[resource,rows,options])
 
   const load=useCallback(async()=>{
     setLoading(true); setError('')
@@ -57,7 +73,31 @@ export default function ResourcePage({resource:resourceProp}){
 
   useEffect(()=>{load()},[load])
 
-  function openCreate(){setForm(defaultForm(fields));setEditing('new')}
+  function openCreate(){
+    const next=defaultForm(fields,resource)
+    if(resource==='invoices'&&options.landlords?.length){
+      const landlord=options.landlords[0]
+      next.landlord_id=landlord.id
+      next.customer_name=landlord.trading_name||landlord.full_legal_name
+      next.customer_address=landlord.correspondence_address||''
+    }
+    setForm(next)
+    setEditing('new')
+  }
+
+  function updateForm(field,value){
+    setForm(current=>{
+      const next={...current,[field]:value}
+      if(resource==='invoices'&&field==='landlord_id'){
+        const landlord=(options.landlords||[]).find(item=>item.id===value)
+        if(landlord){
+          next.customer_name=landlord.trading_name||landlord.full_legal_name
+          next.customer_address=landlord.correspondence_address||''
+        }
+      }
+      return next
+    })
+  }
   function openEdit(row){setForm(normalizeForm(row,fields));setEditing(row.id)}
   async function submit(event){
     event.preventDefault()
@@ -98,15 +138,35 @@ export default function ResourcePage({resource:resourceProp}){
           evidence.append('entity_type',EVIDENCE_RESOURCES[resource].entityType)
           evidence.append('entity_id',recordId)
           evidence.append('folder',EVIDENCE_RESOURCES[resource].folder)
-          evidence.append('document_type',form.category||resource)
-          evidence.append('issue_date',form.inspection_date||form.inventory_date||(form.date_reported?String(form.date_reported).slice(0,10):''))
-          evidence.append('notes',form.details||form.problem||form.comparison_notes||'')
+          evidence.append('document_type',EVIDENCE_RESOURCES[resource].documentType||form.category||resource)
+          evidence.append('issue_date',form[EVIDENCE_RESOURCES[resource].dateField||'inspection_date']||form.inspection_date||form.inventory_date||(form.date_reported?String(form.date_reported).slice(0,10):''))
+          evidence.append('notes',form.details||form.problem||form.comparison_notes||form.description||'')
           const uploaded=await api('/documents/upload',{method:'POST',body:evidence})
           if(!firstUploadedUrl)firstUploadedUrl=uploaded.url
           setForm(current=>({...current,evidence_files:(current.evidence_files||[]).slice(1)}))
         }
         if((resource==='inspections'&&!form.report_url)||(resource==='inventories'&&!form.signed_document_url)){
           await api(`/${resource}/${recordId}`,{method:'PATCH',body:resource==='inspections'?{report_url:firstUploadedUrl}:{signed_document_url:firstUploadedUrl}})
+        }
+      }
+      if(resource==='landlords'){
+        const certificateUploads=[
+          ['rsw_registration_certificate_file','rsw_registration_certificate_url','RSW registration certificate','RSW REGISTRATION','rsw_registration_expiry'],
+          ['rsw_licence_certificate_file','rsw_licence_certificate_url','RSW licence certificate','RSW LICENCE','rsw_licence_expiry']
+        ]
+        for(const [fileField,urlField,certificateTitle,folder,expiryField] of certificateUploads){
+          const file=form[fileField]
+          if(!(file instanceof File))continue
+          const upload=new FormData()
+          upload.append('file',file)
+          upload.append('title',`${form.full_legal_name || 'Landlord'} — ${certificateTitle}`)
+          upload.append('entity_type','landlords')
+          upload.append('entity_id',recordId)
+          upload.append('folder',folder)
+          upload.append('document_type','rsw_certificate')
+          upload.append('expiry_date',form[expiryField]||'')
+          const uploaded=await api('/documents/upload',{method:'POST',body:upload})
+          await api(`/landlords/${recordId}`,{method:'PATCH',body:{[urlField]:uploaded.url}})
         }
       }
       setEditing(null); setMessage('Saved'); setTimeout(()=>setMessage(''),2500); await load()
@@ -130,19 +190,53 @@ export default function ResourcePage({resource:resourceProp}){
     finally{setRowBusyId('')}
   }
 
+  function renderComplianceGroups(){
+    return groupedCompliance.map(group=>(
+      <section key={group.id} style={{borderBottom:'1px solid var(--line)'}}>
+        <header className="panel-head">
+          <h2>{group.label}</h2>
+          <span className="pill neutral">{group.records.length} records</span>
+        </header>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th style={{width:36}}></th><th>Type</th><th>Title</th><th>Inspection</th><th>Expiry</th><th>Status</th><th>Evidence</th><th className="no-print" style={{width:100}}>Actions</th></tr></thead>
+            <tbody>{group.records.map(row=>(
+              <tr key={row.id}>
+                <td><span className={dotClass(row)}/></td>
+                <td>{label(row.category)}</td><td>{row.title||'—'}</td>
+                <td>{row.inspection_date?dateLabel(row.inspection_date):'Not set'}</td>
+                <td>{row.expiry_date?dateLabel(row.expiry_date):'Not set'}</td>
+                <td><StatusText value={row.status}/></td>
+                <td><CellValue row={row} column="document_count" options={options}/></td>
+                <td className="no-print">
+                  <div style={{display:'flex',gap:5}}>
+                    <button type="button" className="button small icon-only" aria-label="Edit" onClick={()=>openEdit(row)}><Pencil size={14}/></button>
+                    <button type="button" className="button small danger icon-only" aria-label="Delete" onClick={()=>remove(row)}><Trash2 size={14}/></button>
+                  </div>
+                </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </section>
+    ))
+  }
+
   return (
     <>
       <div className="page-header"><div><h1 className="page-title-lg" style={{textTransform:'capitalize'}}>{title}</h1>{subtitle&&<p className="page-subtitle">{subtitle}</p>}</div></div>
       <div className="toolbar">
-        <input className="search-input" placeholder={`Search ${title.toLowerCase()}`} value={query} onChange={event=>setQuery(event.target.value)} />
+        <input className="search-input" placeholder={`Search ${title.toLowerCase()}`} value={query} onChange={event=>setSearchParams(event.target.value?{q:event.target.value}:{},{replace:true})} />
         <a className="button" href={`/api/export/${resource}`}><Download size={16}/>CSV</a>
         {!readOnly && resource!=='documents' && <button className="button primary" onClick={openCreate}><Plus size={16}/>New</button>}
       </div>
       {resource==='documents' && <DocumentUploader onUploaded={load}/>}
+      {resource==='properties'&&<PropertyGallery documents={options.__documents||{}}/>}
       {error&&<div className="panel panel-body" style={{borderColor:'#fecaca',background:'#fff5f5',marginBottom:14}}>{error}</div>}
       {message&&<div className="toast">{message}</div>}
       <section className="panel">
         {loading?<div className="loading">Loading…</div>:!rows.length?<div className="empty-state">No records yet</div>:
+          resource==='compliance'?renderComplianceGroups():
           <div className="table-wrap">
             <table className="data-table">
               <thead><tr><th style={{width:36}}></th>{columns.map(column=><th key={column}>{label(column)}</th>)}{!readOnly&&<th className="no-print" style={{width:100}}>Actions</th>}</tr></thead>
@@ -156,6 +250,7 @@ export default function ResourcePage({resource:resourceProp}){
                         {(resource==='invoices'||resource==='rent')&&(
                           <button type="button" className={`button small ${row.status==='paid'?'':'primary'}`} disabled={rowBusyId===row.id} onClick={()=>togglePaid(row)} title={row.status==='paid'?'Mark unpaid':'Mark paid'} aria-label={row.status==='paid'?'Mark unpaid':'Mark paid'}><Check size={14}/></button>
                         )}
+                        {resource==='tenants'&&<Link className="button small icon-only" to={`/tenants/${row.id}`} aria-label="Open profile"><Eye size={14}/></Link>}
                         <button className="button small icon-only" aria-label="Edit" onClick={()=>openEdit(row)}><Pencil size={14}/></button>
                         {resource==='invoices'&&<button className="button small icon-only" aria-label="Print" onClick={()=>window.print()}><Printer size={14}/></button>}
                         {resource==='documents'&&<a className="button small icon-only" href={`/api/documents/${row.id}/file`} target="_blank" rel="noreferrer" aria-label="Open document"><ExternalLink size={14}/></a>}
@@ -175,7 +270,7 @@ export default function ResourcePage({resource:resourceProp}){
         }>
           {fields.length?
             <form id="resource-form" onSubmit={submit} className="form-grid">
-              {fields.map(field=><FormField key={field.name} field={field} value={form[field.name]} form={form} options={options} onChange={value=>setForm(current=>({...current,[field.name]:value}))}/>)}
+              {fields.map(field=><FormField key={field.name} field={field} value={form[field.name]} form={form} options={options} onChange={value=>updateForm(field.name,value)}/>)}
             </form>:
             <p>This module uses the underlying database record. Use CSV export for reporting.</p>
           }
@@ -214,14 +309,17 @@ function DocumentUploader({onUploaded}){
   )
 }
 
-function defaultForm(fields){
+function defaultForm(fields,resource){
   return Object.fromEntries(fields.map(field=>[field.name,
     field.type==='boolean'?false:
     field.type==='file'?null:
     field.type==='files'?[]:
     field.type==='invoice_lines'?[emptyInvoiceLine()]:
     field.type==='json'?'':
-    field.type==='select'?field.options?.[0]||'':''
+    field.type==='select'?field.options?.[0]||'':
+    resource==='invoices'&&field.name==='issue_date'?isoDate(0):
+    resource==='invoices'&&field.name==='due_date'?isoDate(14):
+    ''
   ]))
 }
 function normalizeForm(row,fields){
@@ -272,7 +370,7 @@ function FormField({field,value,form,options,onChange}){
         :field.type==='json'?<textarea value={value||''} onChange={event=>onChange(event.target.value)} spellCheck="false"/>
         :field.type==='boolean'?<span className="checkbox"><input type="checkbox" checked={!!value} onChange={event=>onChange(event.target.checked)}/>{field.label}</span>
         :field.type==='file'?<><input type="file" onChange={event=>onChange(event.target.files?.[0]||null)}/><span className="field-hint">{value instanceof File?value.name:'PDF, photo, CSV or any evidence file'}</span></>
-        :field.type==='relationship'?<select value={value||''} onChange={event=>onChange(event.target.value)}><option value="">Choose…</option>{(options[field.options.source]||[]).map(row=><option key={row.id} value={row.id}>{row[field.options.label]}{row[field.options.secondary]?` · ${row[field.options.secondary]}`:''}</option>)}</select>
+        :field.type==='relationship'?<select value={value||''} onChange={event=>onChange(event.target.value)}><option value="">Choose…</option>{(options[field.options.source]||[]).map(row=><option key={row.id} value={row.id}>{optionLabel(field.options,row)}</option>)}</select>
         :<input type={field.type||'text'} value={value||''} required={field.required} onChange={event=>onChange(event.target.value)}/>}
     </label>
   )
@@ -336,9 +434,11 @@ function CellValue({row,column,options}){
   }
   if(field?.type==='relationship'){
     const option=(options[field.options.source]||[]).find(item=>item.id===value)
+    if(option&&field.options.source==='properties')return formatAddress(option)
     return option?`${option[field.options.label]}${option[field.options.secondary]?` ${option[field.options.secondary]}`:''}`:'—'
   }
   if(['status','priority','referencing_status','severity','inventory_type','direction'].includes(column))return <StatusText value={value}/>
+  if(row.category&&['inspection_date','expiry_date'].includes(column)&&(value==null||value===''))return <span className="pill red">Not set</span>
   if(typeof value==='boolean')return value?'Yes':'No'
   if(['amount_due','amount_received','amount','total','net_amount','vat_amount','gross_amount','rent_amount','quote_amount','invoice_amount','purchase_price','annual_income','returned_amount'].includes(column))return moneyExact(value)
   if(['date_reported','appointment_at','occurred_at'].includes(column))return new Date(value).toLocaleString('en-GB')
@@ -357,6 +457,7 @@ function dotClass(row){
   if(row.severity)return `status-dot ${row.severity==='red'?'status-red':row.severity==='amber'?'status-amber':'status-white'}`
   if(row.status==='completed')return'status-dot status-green'
   if(row.status==='cancelled')return'status-dot status-white'
+  if(row.category&&!row.expiry_date&&row.status!=='not_applicable')return'status-dot status-red'
   if(row.due_date){
     const days=Math.ceil((new Date(row.due_date)-new Date())/86400000)
     if(days<0)return'status-dot status-red'
@@ -370,6 +471,36 @@ function dotClass(row){
   return'status-dot status-white'
 }
 function label(value){return String(value).replace(/_/g,' ').replace(/\b\w/g,char=>char.toUpperCase())}
+function formatAddress(property){
+  return [property.address_line1,property.address_line2,property.town,property.county,property.postcode]
+    .filter(Boolean).join(', ')
+}
+function optionLabel(options,row){
+  if(options.source==='properties')return formatAddress(row)
+  return `${row[options.label]}${row[options.secondary]?` ${row[options.secondary]}`:''}`
+}
+function isoDate(offsetDays){
+  const date=new Date();date.setDate(date.getDate()+offsetDays)
+  return date.toLocaleDateString('en-CA')
+}
+function PropertyGallery({documents}){
+  const photos=Object.values(documents).flat().filter(document=>
+    document.document_type==='property_photo'||document.mime_type?.startsWith('image/')
+  )
+  if(!photos.length)return null
+  return (
+    <section className="panel section">
+      <header className="panel-head"><h2>Property photo gallery</h2><span className="pill neutral">{photos.length}</span></header>
+      <div className="property-gallery">
+        {photos.map(photo=>(
+          <a key={photo.id} href={`/api/documents/${photo.id}/file`} target="_blank" rel="noreferrer">
+            <img src={`/api/documents/${photo.id}/file`} alt={photo.title||photo.original_name} loading="lazy"/>
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 const SUBTITLES={
   landlords:'Legal owners, Rent Smart Wales registration, licences and financial contacts.',

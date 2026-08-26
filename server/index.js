@@ -145,6 +145,30 @@ app.post('/api/rent/:id/receipt',requireRoles('admin','owner','staff','accountan
   }finally{client.release()}
 })
 
+app.get('/api/search/global',async(req,res)=>{
+  const query=String(req.query.q||'').trim()
+  if(query.length<2)return res.json({results:[]})
+  const searchable=Object.entries(RESOURCES).filter(([name,definition])=>
+    definition.search?.length && definition.roles.includes(req.user.role)
+  )
+  const groups=await Promise.all(searchable.map(async([resource,definition])=>{
+    const values=[`%${query}%`]
+    const where=`(${definition.search.map(field=>`"${field.replace(/"/g,'""')}" ILIKE $1`).join(' OR ')})`
+    const result=await req.pool.query(
+      `SELECT * FROM "${definition.table}" WHERE ${where} ORDER BY ${definition.order} LIMIT 5`,
+      values
+    )
+    return result.rows.map(row=>{
+      const title=row.full_legal_name||row.address_line1||[row.first_name,row.surname].filter(Boolean).join(' ')
+        ||row.contract_number||row.title||row.invoice_number||row.customer_name||row.description
+        ||row.problem||row.subject||row.notice_type||row.name||row.original_name||`${definition.label}`
+      const subtitle=row.postcode||row.email||row.category||row.supplier||row.document_type||row.action||''
+      return {id:row.id,resource,label:definition.label,title:String(title||definition.label),subtitle:String(subtitle||'')}
+    })
+  }))
+  res.json({results:groups.flat().slice(0,50)})
+})
+
 registerComplianceRoutes(app)
 app.get('/api/export/:resource',exportCsv)
 registerResourceRoutes(app)

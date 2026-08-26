@@ -16,9 +16,9 @@ export function registerComplianceRoutes(app) {
         `),
         req.pool.query(`
           SELECT category,
-                 count(*) FILTER (WHERE status='current' AND (expiry_date IS NULL OR expiry_date > current_date + interval '30 days'))::int AS green,
+                 count(*) FILTER (WHERE status='current' AND expiry_date > current_date + interval '30 days')::int AS green,
                  count(*) FILTER (WHERE status='current' AND expiry_date BETWEEN current_date AND current_date + interval '30 days')::int AS amber,
-                 count(*) FILTER (WHERE expiry_date < current_date OR status='expired')::int AS red,
+                 count(*) FILTER (WHERE expiry_date < current_date OR status='expired' OR (expiry_date IS NULL AND status <> 'not_applicable'))::int AS red,
                  count(*) FILTER (WHERE status='not_applicable')::int AS not_applicable,
                  count(*)::int AS total
           FROM compliance_records GROUP BY category ORDER BY category
@@ -42,7 +42,14 @@ export function registerComplianceRoutes(app) {
         req.pool.query(`
           SELECT * FROM (
             SELECT cr.id::text, 'compliance' AS type, p.address_line1 || ', ' || coalesce(p.town,'') AS context,
-                   initcap(replace(cr.category,'_',' ')) AS title, cr.expiry_date AS due_date
+                   CASE cr.category
+                     WHEN 'gas' THEN 'Gas Safety CP12 expiring soon'
+                     WHEN 'eicr' THEN 'EICR electrical certificate expiring soon'
+                     WHEN 'epc' THEN 'EPC expiring soon'
+                     WHEN 'insurance' THEN 'Property insurance expiring soon'
+                     WHEN 'smoke_co_alarm' THEN 'Smoke and CO2 alarm compliance expiring soon'
+                     ELSE initcap(replace(cr.category,'_',' ')) || ' expiring soon'
+                   END AS title, cr.expiry_date AS due_date
             FROM compliance_records cr JOIN properties p ON p.id=cr.property_id
             WHERE cr.status <> 'not_applicable' AND cr.expiry_date IS NOT NULL
             UNION ALL
@@ -160,9 +167,7 @@ function round2(value){return Math.round((Number(value)||0)*100)/100}
 
 export function deriveStatus(record) {
   if (!record.expiry_date && record.status === 'current') {
-    const review = record.next_review_date ? new Date(record.next_review_date) : null
-    if (review && review < new Date()) return 'red'
-    return 'green'
+    return 'red'
   }
   const expiry = record.expiry_date ? new Date(record.expiry_date) : null
   if (!expiry) return record.status==='not_applicable'?'white':'amber'
@@ -176,8 +181,7 @@ export function deriveStatus(record) {
 export function propertyScore(property, records, devices) {
   const categories = [
     ['gas', true],['eicr',true],['epc',true],['insurance',true],
-    ['rsw_registration',true],['rsw_licence',false],['hmo_licence',property.hmo_status!=='not_applicable'],
-    ['legionella',true]
+    ['rsw_registration',true],['rsw_licence',false],['smoke_co_alarm',true]
   ]
   const checks = categories.map(([category,required]) => {
     const latest = records.filter(record=>record.category===category)
@@ -210,6 +214,7 @@ export async function runReminders(pool) {
     {sql:`SELECT id,location || ' alarm test/replacement' title,replacement_due due_date FROM safety_devices WHERE replacement_due IS NOT NULL`,table:'safety_devices'},
     {sql:`SELECT id,address_line1 || ' insurance' title,insurance_expiry due_date FROM properties WHERE insurance_expiry IS NOT NULL`,table:'properties'},
     {sql:`SELECT id,full_legal_name || ' RSW registration' title,rsw_registration_expiry due_date FROM landlords WHERE rsw_registration_expiry IS NOT NULL`,table:'landlords'},
+    {sql:`SELECT id,full_legal_name || ' RSW licence' title,rsw_licence_expiry due_date FROM landlords WHERE rsw_licence_expiry IS NOT NULL`,table:'landlords'},
     {sql:`SELECT id,title,due_date FROM tasks WHERE status NOT IN ('completed','cancelled')`,table:'tasks'}
   ]
   let created=0

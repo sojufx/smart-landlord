@@ -551,3 +551,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_occurred ON audit_logs(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tasks_status_due ON tasks(status, due_date);
 
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_date DATE;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS utility_gas_supplier TEXT;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS utility_electricity_supplier TEXT;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS utility_water_supplier TEXT;
+ALTER TABLE landlords ADD COLUMN IF NOT EXISTS rsw_registration_certificate_url TEXT;
+ALTER TABLE landlords ADD COLUMN IF NOT EXISTS rsw_licence_certificate_url TEXT;
+
+ALTER TABLE compliance_records DROP CONSTRAINT IF EXISTS compliance_records_category_check;
+ALTER TABLE compliance_records ADD CONSTRAINT compliance_records_category_check
+  CHECK (category IN ('gas','eicr','epc','insurance','rsw_registration','rsw_licence','hmo_licence','legionella','smoke_co_alarm','fire_risk','other'));
