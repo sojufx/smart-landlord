@@ -11,6 +11,7 @@
 - Rent Smart Wales registration and licence certificate uploads.
 - Automatic 90-day renewal reminders for Rent Smart Wales registration and licence dates.
 - Smoke and CO2 alarm compliance as a trackable certificate category.
+- Fire Detection and Alarm System as a trackable compliance category.
 - Explicit certificate names on dashboard expiry alerts.
 
 ### Changed

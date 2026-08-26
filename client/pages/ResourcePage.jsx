@@ -470,7 +470,10 @@ function dotClass(row){
   if(['active','occupied','protected','passed','completed'].includes(row.status))return'status-dot status-green'
   return'status-dot status-white'
 }
-function label(value){return String(value).replace(/_/g,' ').replace(/\b\w/g,char=>char.toUpperCase())}
+function label(value){
+  if(value==='fire_detection_alarm_system')return'Fire Detection and Alarm System'
+  return String(value).replace(/_/g,' ').replace(/\b\w/g,char=>char.toUpperCase())
+}
 function formatAddress(property){
   return [property.address_line1,property.address_line2,property.town,property.county,property.postcode]
     .filter(Boolean).join(', ')

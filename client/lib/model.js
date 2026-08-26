@@ -165,7 +165,7 @@ export const RESOURCE_FIELDS={
   ],
   compliance:[
     {name:'property_id',label:'Property',type:'relationship',options:propertyOptions,required:true},
-    {name:'category',label:'Category',type:'select',required:true,options:['gas','eicr','epc','insurance','rsw_registration','rsw_licence','smoke_co_alarm','fire_risk','other']},
+    {name:'category',label:'Category',type:'select',required:true,options:['gas','eicr','epc','insurance','rsw_registration','rsw_licence','smoke_co_alarm','fire_detection_alarm_system','fire_risk','other']},
     {name:'title',label:'Title'},
     {name:'status',label:'Status',type:'select',options:['current','pending','remedial','expired','not_applicable']},
     {name:'inspection_date',label:'Inspection / issue date',type:'date',required:true},

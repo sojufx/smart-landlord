@@ -48,6 +48,7 @@ export function registerComplianceRoutes(app) {
                      WHEN 'epc' THEN 'EPC expiring soon'
                      WHEN 'insurance' THEN 'Property insurance expiring soon'
                      WHEN 'smoke_co_alarm' THEN 'Smoke and CO2 alarm compliance expiring soon'
+                     WHEN 'fire_detection_alarm_system' THEN 'Fire detection and alarm system compliance expiring soon'
                      ELSE initcap(replace(cr.category,'_',' ')) || ' expiring soon'
                    END AS title, cr.expiry_date AS due_date
             FROM compliance_records cr JOIN properties p ON p.id=cr.property_id
@@ -181,7 +182,8 @@ export function deriveStatus(record) {
 export function propertyScore(property, records, devices) {
   const categories = [
     ['gas', true],['eicr',true],['epc',true],['insurance',true],
-    ['rsw_registration',true],['rsw_licence',false],['smoke_co_alarm',true]
+    ['rsw_registration',true],['rsw_licence',false],['smoke_co_alarm',true],
+    ['fire_detection_alarm_system',true]
   ]
   const checks = categories.map(([category,required]) => {
     const latest = records.filter(record=>record.category===category)
@@ -206,7 +208,10 @@ function deviceStatus(devices) {
   if (devices.some(device => Date.now()-new Date(device.last_test_date).getTime()>300*86400000)) return 'amber'
   return 'green'
 }
-function label(value) { return value.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) }
+function label(value) {
+  if (value === 'fire_detection_alarm_system') return 'Fire Detection and Alarm System'
+  return value.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())
+}
 
 export async function runReminders(pool) {
   const sources = [

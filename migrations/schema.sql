@@ -559,4 +559,4 @@ ALTER TABLE landlords ADD COLUMN IF NOT EXISTS rsw_licence_certificate_url TEXT;
 
 ALTER TABLE compliance_records DROP CONSTRAINT IF EXISTS compliance_records_category_check;
 ALTER TABLE compliance_records ADD CONSTRAINT compliance_records_category_check
-  CHECK (category IN ('gas','eicr','epc','insurance','rsw_registration','rsw_licence','hmo_licence','legionella','smoke_co_alarm','fire_risk','other'));
+  CHECK (category IN ('gas','eicr','epc','insurance','rsw_registration','rsw_licence','hmo_licence','legionella','smoke_co_alarm','fire_detection_alarm_system','fire_risk','other'));
